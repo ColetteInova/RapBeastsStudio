@@ -49,14 +49,27 @@ export function tokenize(line: string): string[] {
     .filter((w) => w.length > 0 && !/^[-']+$/.test(w));
 }
 
-// Chave de rima = última sequência vocálica + consoantes finais.
-// Ex.: "coração" -> "ão", "cantou" -> "ou", "amar" -> "ar", "batida" -> "a".
+// Chave de rima = última sequência vocálica + consoantes finais (sem
+// acentos). Terminações em vogal fraca única (a/e/o) incluem a consoante
+// anterior para não casar tudo com tudo.
+// Ex.: "coração" -> "ao", "cantou" -> "ou", "amar" -> "ar",
+//      "batida"/"vida" -> "da", "noite"/"forte" -> "te", "amor"/"dor" -> "or".
 export function rhymeKeyOf(word: string): string {
   const w = tokenize(word).pop() ?? word.toLowerCase();
   const runs = w.match(VOWEL_RUNS);
-  if (!runs || runs.length === 0) return w || "?";
+  if (!runs || runs.length === 0) return stripAccents(w) || "?";
   const lastRun = runs[runs.length - 1]!;
-  return w.slice(w.lastIndexOf(lastRun));
+  const idx = w.lastIndexOf(lastRun);
+  let key = w.slice(idx);
+  if (key === lastRun && /^[aeoâãàáéêèóôõò]$/i.test(lastRun)) {
+    const prev = w[idx - 1];
+    if (prev && !/[aeiouáâãàéêíóôõúü]/.test(prev)) key = prev + key;
+  }
+  return stripAccents(key);
+}
+
+function stripAccents(word: string): string {
+  return word.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 export function normalizeLine(line: string): string {
@@ -150,9 +163,10 @@ export function trainRhymeModel(
 }
 
 function sampleWeighted(
-  weights: Record<string, number>,
+  weights: Record<string, number> | undefined,
   rng: () => number,
 ): string | null {
+  if (!weights) return null;
   const entries = Object.entries(weights);
   if (entries.length === 0) return null;
   const total = entries.reduce((sum, [, n]) => sum + n, 0);
@@ -221,6 +235,7 @@ export function generateRhymes(
   model: RhymeModelData,
   options: GenerateOptions = {},
 ): string[] {
+  if (Object.keys(model.rhymeDict).length === 0) return [];
   const rng = options.rng ?? Math.random;
   const count = Math.min(Math.max(options.count ?? 4, 1), 16);
   const maxLen = Math.min(Math.max(options.maxLen ?? MAX_LEN, 4), 24);
