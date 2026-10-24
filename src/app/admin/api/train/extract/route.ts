@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 const execFileAsync = promisify(execFile);
 
 const YOUTUBE_URL =
-  /^https?:\/\/(www\.|m\.)?(youtube\.com\/(watch|shorts|live)|youtu\.be)\//i;
+  /^https?:\/\/(www\.|m\.)?(youtube\.com\/(watch|shorts|live)([?/]|$)|youtu\.be\/)/i;
 
 const SKIP_LINE =
   /^(WEBVTT|NOTE|STYLE|Kind:|Language:|align:|position:|line:|size:)/i;
