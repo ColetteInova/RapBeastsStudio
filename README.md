@@ -57,6 +57,19 @@ scripts/compare_parity.sh ../RapBeasts   # diff jogo × Studio (GODOT_BIN=... se
 firebase deploy --only firestore:rules,storage  # regras de segurança
 ```
 
+### Debug no VS Code
+
+`.vscode/launch.json` traz as configurações prontas (F5 ou painel **Run and Debug**):
+
+- **Next.js: debug server-side** — sobe `next dev --inspect` (breakpoints em Server
+  Components, rotas de API e `src/lib`).
+- **Next.js: debug client-side (Chrome)** — abre `http://localhost:3000` no Chrome
+  com os breakpoints do cliente (o dev server precisa já estar rodando).
+- **Next.js: debug full stack** — sobe servidor + Chrome juntos e encerra o servidor
+  ao parar a sessão.
+- **Next.js: attach server-side (port 9229)** — anexa a um dev server já iniciado
+  com `npm run dev -- --inspect`.
+
 ## Estrutura
 
 ```
