@@ -405,3 +405,42 @@ button.tap {
   opacity: 0.85;
 }
 
+.admin-nav {
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  display: flex;
+}
+
+.admin-nav-link {
+  color: #f5f2ff;
+  opacity: 0.8;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.admin-nav-link:hover {
+  background: rgba(255, 255, 255, 0.12);
+  opacity: 1;
+}
+
+.admin-nav-link.active {
+  background: rgba(255, 255, 255, 0.18);
+  opacity: 1;
+}
+
+textarea {
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  background: #141126;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  width: 100%;
+  resize: vertical;
+}
+

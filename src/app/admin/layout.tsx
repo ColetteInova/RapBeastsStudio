@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AdminNav from "@/components/admin_nav";
 
 export const metadata: Metadata = {
   title: "RapBeasts Studio — Admin",
@@ -17,6 +18,7 @@ export default function AdminLayout({
         <span className="admin-bar-text">
           Área de administração — disponível apenas em localhost.
         </span>
+        <AdminNav />
       </div>
       {children}
     </>
