@@ -1,0 +1,29 @@
+{
+  "package_version": 1,
+  "format_version": 3,
+  "type": "chart_only",
+  "title": "Parity",
+  "lane_count": 5,
+  "beat_ref": "",
+  "bpm_map": [
+    {
+      "time_ms": 0,
+      "bpm": 120
+    }
+  ],
+  "host_lines": [],
+  "host_name": "DJ JABAY",
+  "difficulties": {
+    "normal": {
+      "notes": [
+        {
+          "t": 2000,
+          "l": 0,
+          "side": "player",
+          "w": "EU",
+          "r": 1
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "package_version": 1,
+  "format_version": 3,
+  "type": "chart_only",
+  "song_id": "u_min",
+  "title": "Min",
+  "bpm_map": [
+    {
+      "time_ms": 0,
+      "bpm": 96
+    }
+  ],
+  "host_lines": [],
+  "difficulties": {
+    "normal": {
+      "notes": [
+        {
+          "t": 2500,
+          "l": 0,
+          "side": "player"
+        }
+      ]
+    }
+  }
+}

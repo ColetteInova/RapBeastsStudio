@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /songs/{songId} {
+      // Leitura pública: o jogo baixa sem login.
+      allow read: if true;
+      // Escrita: qualquer usuário autenticado (provisório — após o primeiro
+      // login do autor, troque por:
+      //   allow create, update, delete: if request.auth != null
+      //     && request.auth.uid == '<SEU_UID>';
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // Entitlements do premium (Fase 2): cada usuário lê o próprio; as
+    // escritas vêm só do webhook do Stripe via Firebase Admin (conta de
+    // serviço, que ignora as rules).
+    match /entitlements/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Contadores de créditos diários (só o servidor via Admin SDK).
+    match /usage/{docId} {
+      allow read, write: if false;
+    }
+
+    // Placares de músicas custom (Fase 3): leitura pública; escrita só
+    // autenticada (sessão anônima do jogo) com campos saneados.
+    match /scores/{songId}/entries/{entryId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.score is int
+        && request.resource.data.score > 0
+        && request.resource.data.score < 10000000
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 40;
+      allow update, delete: if false;
+    }
+
+    // Denúncias (Fase 3): só criação autenticada; revisão manual do autor.
+    match /reports/{reportId} {
+      allow read: if false;
+      allow create: if request.auth != null
+        && request.resource.data.song_id is string;
+      allow update, delete: if false;
+    }
+  }
+}
