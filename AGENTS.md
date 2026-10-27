@@ -31,6 +31,27 @@ editor web e o contrato de sincronização.
   de verdade do formato. Mudança em um lado ⇒ espelhar no outro e adicionar
   fixture nos testes de paridade.
 
+## Treino local de rimas (admin, localhost)
+
+- Área `/admin` restrita a localhost via `src/proxy.ts` (convenção `proxy` do
+  Next 16) + guard nas rotas (`src/lib/local_only.ts`).
+- Modelo estatístico (Markov + dicionário de rimas): `src/lib/rhyme_model.ts`.
+- Fine-tune de LLM local (**GPT-2 médio PT** `egonrp/gpt2-wikiwriter-medium-portuguese`
+  + `pierreguillou/gpt2-small-portuguese` convertidos para MLX em
+  `data/rhyme-llm/_base/gpt2-pt-medium`; MLX + LoRA). Conversão via
+  `scripts/convert_hf_gpt2.py` (instala torch no venv).
+  - Scripts: `scripts/build_dataset.py`, `scripts/train_mlx.py`,
+    `scripts/generate_mlx.py` (Python; NÃO são rotas da web).
+  - Venv Python fica **fora do repo** (`~/.venvs/rapbeasts-studio-mlx`) porque
+    o Turbopack não resolve symlinks internos do projeto. Resolução do
+    interpretador em `src/lib/mlx_env.ts`.
+  - Dados treinados (corpus, datasets, adapters, base convertida) em `data/` —
+    gitignored. O safetensors do HF exige rename `transformer.`→`model.` +
+    transposição dos pesos Conv1D antes do `mlx_lm convert`.
+  - `yt-dlp` extrai legendas `pt-BR → pt-PT → pt` (um idioma por execução;
+    `--print` do yt-dlp implica simulate e suprime a gravação).
+  - Isso é treino/inferência **local**, sem chamadas de API externas.
+
 ## Não fazer
 
 - Não commitar segredos (chaves de API, `.env.local` já está no `.gitignore`).

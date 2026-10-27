@@ -9,6 +9,17 @@ type ModelStats = {
   rhymeGroups: number;
 };
 
+type SmartJob = {
+  id: string;
+  name: string;
+  status: "running" | "done" | "failed";
+  step: number | null;
+  iters: number;
+  loss: number | null;
+  elapsedSec: number;
+  createdAt: string;
+};
+
 type ModelMeta = {
   id: string;
   name: string;
@@ -41,6 +52,16 @@ export default function RhymeTrainer() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
 
+  // --- Modelo inteligente (LLM/MLX) ---
+  const [smartJobs, setSmartJobs] = useState<SmartJob[]>([]);
+  const [smartBusy, setSmartBusy] = useState(false);
+  const [llmIters, setLlmIters] = useState(2000);
+  const [llmRhyme, setLlmRhyme] = useState("");
+  const [llmSeed, setLlmSeed] = useState("");
+  const [llmCount, setLlmCount] = useState(4);
+  const [llmGenBusy, setLlmGenBusy] = useState(false);
+  const [llmGenerated, setLlmGenerated] = useState<string[]>([]);
+
   const listModels = useCallback(async () => {
     const res = await fetch("/admin/api/train");
     const data = await parseJson<{ models: ModelMeta[] }>(res);
@@ -53,6 +74,88 @@ export default function RhymeTrainer() {
       /* listagem opcional */
     });
   }, [listModels]);
+
+  // Polling dos jobs de fine-tune (só localhost, custo baixo).
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const res = await fetch("/admin/api/train/smart");
+        const data = await parseJson<{ jobs: SmartJob[] }>(res);
+        if (!cancelled) setSmartJobs(data.jobs ?? []);
+      } catch {
+        /* servidor fora do ar etc. */
+      }
+    };
+    tick();
+    const timer = setInterval(tick, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
+
+  const smartDoneJob = smartJobs.find((j) => j.status === "done") ?? null;
+  const smartRunning = smartJobs.some((j) => j.status === "running");
+
+  async function onTrainLlm() {
+    if (!transcript.trim()) {
+      setError("Extraia as letras ou cole um texto antes do fine-tune.");
+      return;
+    }
+    setSmartBusy(true);
+    setError("");
+    setStatus("");
+    try {
+      const res = await fetch("/admin/api/train/smart", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: modelName || "LLM de rimas",
+          text: transcript,
+          iters: llmIters,
+        }),
+      });
+      const data = await parseJson<{ job: SmartJob }>(res);
+      setStatus(
+        `Fine-tune iniciado em background (${data.job.iters} iterações). ` +
+          "Acompanhe o progresso abaixo.",
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha ao iniciar treino.");
+    } finally {
+      setSmartBusy(false);
+    }
+  }
+
+  async function onGenerateLlm() {
+    if (!smartDoneJob) {
+      setError("Treine o modelo inteligente antes de gerar.");
+      return;
+    }
+    setLlmGenBusy(true);
+    setError("");
+    setStatus("");
+    try {
+      const res = await fetch("/admin/api/train/smart/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jobId: smartDoneJob.id,
+          rhyme: llmRhyme || undefined,
+          seed: llmSeed || undefined,
+          count: llmCount,
+        }),
+      });
+      const data = await parseJson<{ lines: string[] }>(res);
+      setLlmGenerated(data.lines);
+      setStatus(`${data.lines.length} linha(s) gerada(s) pelo LLM.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha na geração LLM.");
+    } finally {
+      setLlmGenBusy(false);
+    }
+  }
 
   async function onExtract() {
     setExtractBusy(true);
@@ -280,6 +383,110 @@ export default function RhymeTrainer() {
         {generated.length > 0 ? (
           <ol className="score-list">
             {generated.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ol>
+        ) : null}
+      </section>
+
+      <section className="card">
+        <h2>5 · Modelo Inteligente (LLM local)</h2>
+        <p className="tagline" style={{ margin: "4px 0 12px" }}>
+          Fine-tune de um LLM em português (GPT-2 médio treinado em PT-BR,
+          355M) com MLX + LoRA no seu Mac — usa o texto da seção 2 como
+          corpus. Roda 100% local.
+        </p>
+        <div className="row">
+          <label className="field">
+            Iterações
+            <input
+              type="number"
+              min={20}
+              max={4000}
+              step={20}
+              value={llmIters}
+              onChange={(e) => setLlmIters(Number(e.target.value) || 2000)}
+            />
+          </label>
+          <button
+            className="primary"
+            disabled={smartBusy || smartRunning || !transcript.trim()}
+            onClick={onTrainLlm}
+            type="button"
+          >
+            {smartRunning
+              ? "Treinando…"
+              : smartBusy
+                ? "Iniciando…"
+                : "Treinar LLM"}
+          </button>
+        </div>
+
+        {smartJobs.length === 0 ? (
+          <p className="status">Nenhum fine-tune feito ainda.</p>
+        ) : (
+          <ul className="cloud-list">
+            {smartJobs.map((j) => (
+              <li key={j.id}>
+                <span>
+                  {j.name || "LLM"}{" "}
+                  <span className="status">
+                    {j.status === "running"
+                      ? ` · treinando ${j.step ?? 0}/${j.iters} iters${
+                          j.loss != null ? ` · loss ${j.loss.toFixed(2)}` : ""
+                        } · ${Math.round(j.elapsedSec / 60)}min`
+                      : j.status === "done"
+                        ? " · pronto"
+                        : " · falhou"}{" "}
+                    · {new Date(j.createdAt).toLocaleDateString("pt-BR")}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="row">
+          <label className="field">
+            Semente (opcional)
+            <input
+              type="text"
+              placeholder="ex.: na quebrada"
+              value={llmSeed}
+              onChange={(e) => setLlmSeed(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            Palavra para rimar (opcional)
+            <input
+              type="text"
+              placeholder="ex.: coração"
+              value={llmRhyme}
+              onChange={(e) => setLlmRhyme(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            Linhas
+            <input
+              type="number"
+              min={1}
+              max={8}
+              value={llmCount}
+              onChange={(e) => setLlmCount(Number(e.target.value) || 4)}
+            />
+          </label>
+          <button
+            className="primary"
+            disabled={llmGenBusy || !smartDoneJob}
+            onClick={onGenerateLlm}
+            type="button"
+          >
+            {llmGenBusy ? "Gerando…" : "Gerar com LLM"}
+          </button>
+        </div>
+        {llmGenerated.length > 0 ? (
+          <ol className="score-list">
+            {llmGenerated.map((line, i) => (
               <li key={i}>{line}</li>
             ))}
           </ol>

@@ -36,6 +36,9 @@ yarn-error.log*
 # modelos treinados de rimas (conteúdo local, não versionado)
 /data/
 
+# ambiente Python do fine-tune local (MLX)
+/.mlx-venv/
+
 # vercel
 .vercel
 
